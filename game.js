@@ -1,34 +1,44 @@
 
 var can = document.getElementById('canvas');
-
 var ctx = can.getContext('2d');
 
-
+//postavljanje dimenzija canvasa
 can.width = innerWidth-4;
 can.height = innerHeight-4;
+
+//definiranje parametara igre
 var ASTEROID_SPEED_MIN=0.8
 var ASTEROID_SPEED_MAX=2
 var PLAYER_SPEED=5
 var GENERATE_ASTEROIDS=10
 
+//definiranje pozadine
 var img = new Image();
 img.src = "wallpaperflare.com_wallpaper.jpg";
 
+
 const backgroundMusic = document.getElementById('backgroundMusic');
 
+//definiranje aktivnih pritisnutih strelica
 var activeButtons=new Map()
 activeButtons.set("ArrowLeft",false)
 activeButtons.set("ArrowUp",false)
 activeButtons.set("ArrowRight",false)
 activeButtons.set("ArrowDown",false)
 
+//varijable koje će se koristiti
 var asteroids=[]
 var startTime
 var bestTime
 var time2
 var musicPlaying=false
 
+/**
+ *
+ * @param score vrijeme koje će se spremiti
+ */
 function saveScore(score){
+    //spremi u localstorage
     localStorage.setItem("bestTime",score)
 }
 
@@ -43,9 +53,9 @@ window.onload = function() {
 }
 
 /**
- * pokreni igru
- * funkcija dodaje slušanje pritisaka i otpuštanja tipaka
- * generira početni broj asteroida
+ * pokreni igru,
+ * funkcija dodaje slušanje pritisaka i otpuštanja tipaka,
+ * generira početni broj asteroida,
  * pokreće vrijeme
  *
  */
@@ -56,6 +66,7 @@ function startGame() {
     bestTime=localStorage.getItem("bestTime")
     startTime=new Date().getTime()
 
+    //generiraj asteroide
     for (let i =0;i<GENERATE_ASTEROIDS;++i){
         let asteroid=new Asteroid(can,ctx)
         asteroid.draw()
@@ -66,11 +77,9 @@ function startGame() {
 }
 
 /**
- *
- * @param player
- * @param asteroids
+ *funkcija koja kontrolira prikaz ekrana
  */
-function moveBackground(player,asteroids){
+function moveBackground(){
     let moveOn=true
     var imgHeight = 0;
     var scrollSpeed = 2;
@@ -78,7 +87,9 @@ function moveBackground(player,asteroids){
     ctx.font = '15px Arial';
 
 
-
+    /**
+     * funkcija koja svaki frame upravlja prikazom na ekranu
+     */
     function loop(){
         let time=new Date().getTime();
         let diff=time-startTime
@@ -87,12 +98,14 @@ function moveBackground(player,asteroids){
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
 
+        //obriši ekran
         ctx.clearRect(0,0,can.width,can.height)
-        // draw image 1
+
+        //crtaj pozadinu tako da se čini da se kreće igrač
         ctx.drawImage(img, 0,imgHeight,can.width,can.height);
-        // draw image 2
         ctx.drawImage(img, 0, imgHeight - can.height,can.width,can.height);
 
+        //postavke za sjenu
         ctx.shadowBlur = 10;
         ctx.shadowColor = "red";
         ctx.shadowOffsetY = 5;
@@ -100,23 +113,29 @@ function moveBackground(player,asteroids){
         player.update()
         ctx.shadowColor = "green";
 
+        //ažuriraj poziciju asteroida i makni ako je izašao iz ekrana
         for(let asteroid of asteroids){
             if(!asteroid.update())
                 asteroids.splice(asteroids.indexOf(asteroid),1)
         }
+        //izračunaj trenutno vrijeme i prikaži na ekranu
        time2=Math.floor(diff/(1000*60)).toString().padStart(2,'0')+':'+(Math.floor(diff/(1000)%60)).toString().padStart(2,'0') +':'+(diff%1000).toString().padStart(3,'0')
         ctx.fillText('Time: ' +time2 , can.width-160, 40);
         ctx.fillText('Best time: ' + (bestTime!==null ? bestTime : 'None') , can.width-160, 70);
 
+        //provjeri je li došlo do kolizije
         if(checkCollision(asteroids)){
             moveOn=false
             gameEnd()
         }
+
         imgHeight += scrollSpeed;
 
+        //resetiraj slike pozadine za animaciju
         if (imgHeight === can.height)
             imgHeight = 0;
 
+        //zatraži ponavljanje sljedeći frame
        if(moveOn){
            window.requestAnimationFrame(loop);
        }
@@ -125,10 +144,16 @@ function moveBackground(player,asteroids){
         loop()
     }
 }
+
+/**
+ * funkcija koja se pozove kad je došlo do sudara i prekinuta je igra,
+ * zaustavlja glazbu i poziva ažuriranje najboljeg vremena
+ */
 function gameEnd(){
     backgroundMusic.pause();
     backgroundMusic.currentTime=0
 
+    //ako je trenutno vrijeme novi highscore spremi ga
     if(time2>bestTime || bestTime===null){
         bestTime=time2
         saveScore(time2)
@@ -136,17 +161,27 @@ function gameEnd(){
         ctx.fillText('Time: ' +time2 , can.width-160, 40);
         ctx.fillText('Best time: ' +bestTime , can.width-160, 70);
     }
+    //postavke i ispis kraja igre
     ctx.fillStyle = "#fff"
     ctx.font = "24px Arial"
     ctx.textAlign = "center"
     ctx.textBaseline = "middle";
     ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2);
 }
+
+/**
+ *
+ * @param event događaj pritiska tipke
+ * zabilježi da je tipka aktivna,
+ * pri pokretanju omogućuje glazbu kada igrač postane aktivan
+ */
 function handleArrowKeysDown(event) {
+    //pokretanje glazbe
     if(!musicPlaying){
         backgroundMusic.play();
         musicPlaying=true
     }
+    //zabilježi pritisak strelice
     if (event.key ==="ArrowLeft" ||
         event.key ==="ArrowUp" ||
         event.key ==="ArrowRight" ||
@@ -157,7 +192,14 @@ function handleArrowKeysDown(event) {
     }
 
 }
+
+/**
+ *
+ * @param event-događaj otpuštanja tipke
+ * upravljaj otpuštanje strelice
+ */
 function handleArrowKeysUp(event) {
+    //zabilježi otpuštanje strelice
     if (event.key ==="ArrowLeft" ||
         event.key ==="ArrowUp" ||
         event.key ==="ArrowRight" ||
@@ -169,34 +211,54 @@ function handleArrowKeysUp(event) {
 
 }
 
+/**
+ *
+ * @param x x koordinata točke
+ * @param y y koordinata točke
+ * @param rect  objekt oblika pravokutnika
+ * @returns {boolean}  vraća nalazi li se točka u pravokutniku
+ */
 function pointInRectangle(x, y, rect) {
     return x >= rect.x+0.05*rect.width && x <= rect.x + 0.95*rect.width &&
-        y >= rect.y+0.05*rect.height && y <= rect.y + 0.95*rect.height;
+        y >= rect.y+0.05*rect.height && y <= rect.y + 0.95*rect.height
 }
 
-function triangleIntersectsRectangle(triangle, rect) {
-    // Check each point of the triangle
+/**
+ *
+ * @param triangle  trokut svemirskog broda igrača
+ * @param rect  objekt oblika pravokutnika
+ * @returns {boolean}  vraća presjeca li igrač objekt rect
+ */
+function playerIntersectsRectangle(triangle, rect) {
+    //za svaku točku trokuta igrača
     for (let key in triangle) {
         let point=triangle[key]
         if (pointInRectangle(point.x, point.y, rect)) {
-            return true; // Collision detected
+            return true
         }
     }
-    return false; // No collision
+    return false;
 }
 
+/**
+ *
+ * @returns {boolean}  vraća je li došlo do kolizije igrača i bilokojeg objekta asteroida
+ */
 function checkCollision() {
-    let collision = false
+    //za svaki asteroid provjeri sjeku li se on i igrač
     for(let asteroid of asteroids){
-        if(triangleIntersectsRectangle(player.Triangle, asteroid)){
-            collision=true
-            break
+        if(playerIntersectsRectangle(player.Triangle, asteroid)){
+            return true
         }
     }
-    return collision
+    return false
 
 }
 
+
+
+//postavljanje intervala koji će otežavat igru
+// povećava broj asteroida ili njihovu brzinu
 window.setInterval(()=>{
     for(let i=0;i<GENERATE_ASTEROIDS;++i){
         asteroids.push(new Asteroid(can,ctx))
@@ -211,8 +273,17 @@ window.setInterval(()=>{
 },10000)
 
 
+/**
+ * klasa za objekt igrača
+ */
 
 class Ship{
+    /**
+     *
+     * @param can canvas objekt
+     * @param ctx kontekst canvas objekta
+     * kreira brod i postavlja njegove dimenzije i sliku
+     */
     constructor(can,ctx) {
     this.can = can;
     this.ctx = ctx;
@@ -224,6 +295,12 @@ class Ship{
     this.image.src="spaceship.png"
 
     }
+
+    /**
+     *
+     * @returns {{a: {x: (*|number), y: *}, b: {x: *, y: *}, c: {x: *, y: *}}} vraća tri točke za svemirski brod igrača
+     * @constructor
+     */
     get Triangle(){
         return {
             a:{
@@ -240,10 +317,20 @@ class Ship{
             }
         }
     }
+
+    /**
+     * crtanje igrača na canvasu
+     */
     draw(){
         this.ctx.drawImage(this.image,this.x,this.y , this.width, this.height)
     }
+
+    /**
+     * ažuriranje koordinata igrača na temelju aktivnih pritisnutih strelica i postavljene brzine igrača,
+     * ako se kreće dijagonalno osigurava se kretanje jednakom brzinom
+     */
     update(){
+        //dijagonalna brzina, jer nije isto kao kretanje u smjeru jedne osi
         const diagonalSpeed = PLAYER_SPEED / Math.sqrt(2);
         if(activeButtons.get("ArrowLeft") && activeButtons.get("ArrowUp")){
             this.x-=diagonalSpeed
@@ -286,12 +373,22 @@ class Ship{
         else if(this.y+this.height-0.2*this.height>can.height){
             this.y=1
         }
-
+        //kada ažuriramo koordinate ponovno nacrtamo
         this.draw()
     }
 }
 
+/**
+ * klasa za asteroid
+ */
 class Asteroid{
+
+    /**
+     * konstruktor za asteroid
+     * postavljanje brzine, sjene, smjera, položaja
+     * @param can canvas objekt
+     * @param ctx kontekst canvas objekta
+     */
     constructor(can,ctx) {
         this.can = can;
         this.ctx = ctx;
@@ -300,6 +397,7 @@ class Asteroid{
         this.image=new Image()
         this.image.src="asteroid.png"
         this.speed=(Math.floor(Math.random()*(ASTEROID_SPEED_MAX-ASTEROID_SPEED_MIN+1))+ASTEROID_SPEED_MIN)
+       //generiraj položaj i brzinu i vektor kretanja
         this.create()
         if(this.movement.x<0){
             this.shadowOffsetX = 5;
@@ -321,6 +419,10 @@ class Asteroid{
         }
     }
 
+    /**
+     * slučajno generiranje položaja asteroida
+     * slučajno generiranje vektora kretanja asteroida
+     */
     create(){
         let deciderPosition=Math.floor(Math.random()*4)
         //console.log(deciderPosition)
@@ -375,9 +477,19 @@ class Asteroid{
             }
         }
     }
+
+    /**
+     * funkcija koja crta asteroid
+     */
     draw(){
         this.ctx.drawImage(this.image,this.x,this.y, this.width, this.height)
     }
+
+    /**
+     * ažuriraj koordinate asteroida na temelju njegovog vektora kretanja i brzine,
+     * postavlja postavke za crtanje sjene
+     * @returns {boolean} vraća nalazi li se asteroid unutar ekrana
+     */
     update() {
         this.ctx.shadowOffsetX=this.shadowOffsetX
         this.ctx.shadowOffsetY=this.shadowOffsetY
@@ -389,6 +501,7 @@ class Asteroid{
             (this.y>can.height && this.movement.y>0)){
             return false
         }
+        //nakon ažuriranja koordinata nacrtaj asteroid
         this.draw()
         return true
     }
